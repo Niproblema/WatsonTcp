@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using WatsonTcp;
 
@@ -36,7 +37,7 @@ namespace TestClientStream
                 Console.Write("Command [? for help]: ");
                 string userInput = Console.ReadLine();
                 byte[] data = null;
-                MemoryStream ms = null; 
+                MemoryStream ms = null;
 
                 if (String.IsNullOrEmpty(userInput))
                 {
@@ -94,12 +95,27 @@ namespace TestClientStream
                         break;
 
                     case "sendasync":
-                        Console.Write("Data: ");
-                        userInput = Console.ReadLine();
-                        if (String.IsNullOrEmpty(userInput)) break;
-                        data = Encoding.UTF8.GetBytes(userInput);
-                        ms = new MemoryStream(data);
-                        success = client.SendAsync(data.Length, ms).Result;
+                        string mesaaGE = "This is test data being streamed";
+                        data = Encoding.UTF8.GetBytes(mesaaGE);
+
+                        Stream ss = new MemoryStream();
+                        BinaryWriter bw = new BinaryWriter(ss);
+
+
+                        Console.WriteLine("Writing data amounbt " + data.Length);
+                        Task.Run(() =>
+                        {
+                            Random rng = new Random();
+                            for (int i = 0; i < data.Length; i++)
+                            {
+                                bw.Write(data[i]);
+                                bw.Flush();
+                                Thread.Sleep(50);
+                            }
+                            ss.Position = 0;
+                        });
+
+                        success = client.SendAsync(data.Length, ss).Result;
                         Console.WriteLine(success);
                         break;
 
@@ -129,13 +145,17 @@ namespace TestClientStream
                         }
 
                         break;
-
+                    case "sendlargeasync":
+                        Stream stream = GetStream(2045);
+                        success = client.SendAsync(stream.Length, stream).Result;
+                        Console.WriteLine(success);
+                        break;
                     case "dispose":
                         client.Dispose();
                         break;
 
-                    case "connect": 
-                        client.Connect(); 
+                    case "connect":
+                        client.Connect();
                         break;
 
                     case "disconnect":
@@ -333,8 +353,8 @@ namespace TestClientStream
             Console.WriteLine("   StackTrace    : " + e.StackTrace);
             Console.WriteLine("");
         }
-         
-        private static void StreamReceived(object sender, StreamReceivedEventArgs args) 
+
+        private static void StreamReceived(object sender, StreamReceivedEventArgs args)
         {
             try
             {
@@ -368,7 +388,7 @@ namespace TestClientStream
                 {
                     Console.WriteLine("[null]");
                 }
-                  
+
                 if (args.Metadata != null && args.Metadata.Count > 0)
                 {
                     Console.WriteLine("Metadata:");
@@ -376,7 +396,7 @@ namespace TestClientStream
                     {
                         Console.WriteLine("  " + curr.Key.ToString() + ": " + curr.Value.ToString());
                     }
-                } 
+                }
             }
             catch (Exception e)
             {
@@ -417,13 +437,13 @@ namespace TestClientStream
             if (String.IsNullOrEmpty(presharedKey)) presharedKey = InputString("Preshared key:", "1234567812345678", false);
             return presharedKey;
         }
-         
-        private static void AuthenticationSucceeded(object sender, EventArgs args) 
+
+        private static void AuthenticationSucceeded(object sender, EventArgs args)
         {
             Console.WriteLine("Authentication succeeded");
         }
-         
-        private static void AuthenticationFailure(object sender, EventArgs args) 
+
+        private static void AuthenticationFailure(object sender, EventArgs args)
         {
             Console.WriteLine("Authentication failed");
         }
@@ -495,6 +515,15 @@ namespace TestClientStream
         private static void Logger(Severity sev, string msg)
         {
             Console.WriteLine("[" + sev.ToString().PadRight(9) + "] " + msg);
+        }
+
+        private static MemoryStream GetStream(long mb)
+        {
+            MemoryStream memoryStream = new MemoryStream();
+            memoryStream.Seek(mb * 1024 * 1024, SeekOrigin.Begin);
+            memoryStream.WriteByte(0);
+            memoryStream.Position = 0;
+            return memoryStream;
         }
     }
 }

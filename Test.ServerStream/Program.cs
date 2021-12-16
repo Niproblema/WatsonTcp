@@ -121,7 +121,7 @@ namespace TestServerStream
                         break;
 
                     case "send":
-                        ipPort = InputString("IP:port:", _LastIpPort, false); 
+                        ipPort = InputString("IP:port:", _LastIpPort, false);
                         Console.Write("Data: ");
                         userInput = Console.ReadLine();
                         if (String.IsNullOrEmpty(userInput)) break;
@@ -132,7 +132,7 @@ namespace TestServerStream
                         break;
 
                     case "send md":
-                        ipPort = InputString("IP:port:", _LastIpPort, false); 
+                        ipPort = InputString("IP:port:", _LastIpPort, false);
                         metadata = InputDictionary();
                         Console.Write("Data: ");
                         userInput = Console.ReadLine();
@@ -144,13 +144,13 @@ namespace TestServerStream
                         break;
 
                     case "sendasync":
-                        ipPort = InputString("IP:port:", _LastIpPort, false); 
+                        ipPort = InputString("IP:port:", _LastIpPort, false);
                         Console.Write("Data: ");
                         userInput = Console.ReadLine();
                         if (String.IsNullOrEmpty(userInput)) break;
-                        data = Encoding.UTF8.GetBytes(userInput); 
+                        data = Encoding.UTF8.GetBytes(userInput);
                         ms = new MemoryStream(data);
-                        ms.Seek(0, SeekOrigin.Begin); 
+                        ms.Seek(0, SeekOrigin.Begin);
                         success = _Server.SendAsync(ipPort, data.Length, ms).Result;
                         Console.WriteLine(success);
                         break;
@@ -337,22 +337,34 @@ namespace TestServerStream
             Console.WriteLine("   StackTrace    : " + e.StackTrace);
             Console.WriteLine("");
         }
-         
+
         private static void ClientConnected(object sender, ConnectionEventArgs args)
         {
             _LastIpPort = args.IpPort;
             Console.WriteLine("Client connected: " + args.IpPort);
-        } 
+        }
 
         private static void ClientDisconnected(object sender, DisconnectionEventArgs args)
         {
             Console.WriteLine("Client disconnected: " + args.IpPort + ": " + args.Reason.ToString());
         }
-         
+
         private static void StreamReceived(object sender, StreamReceivedEventArgs args)
         {
             try
             {
+                MemoryStream ss = new MemoryStream();
+                args.DataStream.CopyTo(ss);
+                ss.Position = 0;
+
+                Console.Write("Stream from " + args.IpPort + " [" + args.ContentLength + " bytes]: ");
+
+                if (ss.Length > 1024 * 1024 * 10)
+                {
+                    return;
+                }
+
+
                 Console.Write("Stream from " + args.IpPort + " [" + args.ContentLength + " bytes]: ");
 
                 int bytesRead = 0;
@@ -360,11 +372,11 @@ namespace TestServerStream
                 byte[] buffer = new byte[bufferSize];
                 long bytesRemaining = args.ContentLength;
 
-                if (args.DataStream != null && args.DataStream.CanRead)
+                if (ss != null && args.DataStream.CanRead)
                 {
                     while (bytesRemaining > 0)
                     {
-                        bytesRead = args.DataStream.Read(buffer, 0, buffer.Length);
+                        bytesRead = ss.Read(buffer, 0, buffer.Length);
                         Console.WriteLine("Read " + bytesRead);
 
                         if (bytesRead > 0)
@@ -432,7 +444,7 @@ namespace TestServerStream
 
             try
             {
-                SyncResponse resp = _Server.SendAndWait(timeoutMs, ipPort, userInput); 
+                SyncResponse resp = _Server.SendAndWait(timeoutMs, ipPort, userInput);
                 if (resp.Metadata != null && resp.Metadata.Count > 0)
                 {
                     Console.WriteLine("Metadata:");
