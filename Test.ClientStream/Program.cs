@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.IO;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -19,6 +20,8 @@ namespace TestClientStream
         private static bool mutualAuthentication = true;
         private static WatsonTcpClient client = null;
         private static string presharedKey = null;
+
+        private static readonly RecyclableMemoryStreamManager manager = new RecyclableMemoryStreamManager();
 
         private static void Main(string[] args)
         {
@@ -146,7 +149,7 @@ namespace TestClientStream
 
                         break;
                     case "sendlargeasync":
-                        Stream stream = GetStream(2045);
+                        Stream stream = GetStream(10000);
                         success = client.SendAsync(stream.Length, stream).Result;
                         Console.WriteLine(success);
                         break;
@@ -519,7 +522,7 @@ namespace TestClientStream
 
         private static MemoryStream GetStream(long mb)
         {
-            MemoryStream memoryStream = new MemoryStream();
+            MemoryStream memoryStream = manager.GetStream();
             memoryStream.Seek(mb * 1024 * 1024, SeekOrigin.Begin);
             memoryStream.WriteByte(0);
             memoryStream.Position = 0;

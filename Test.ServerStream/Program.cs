@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.IO;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -19,6 +20,8 @@ namespace TestServerStream
         private static bool _AcceptInvalidCerts = true;
         private static bool _MutualAuth = true;
         private static string _LastIpPort = null;
+
+        private static readonly RecyclableMemoryStreamManager manager = new RecyclableMemoryStreamManager();
 
         private static void Main(string[] args)
         {
@@ -353,7 +356,7 @@ namespace TestServerStream
         {
             try
             {
-                MemoryStream ss = new MemoryStream();
+                MemoryStream ss = manager.GetStream();
                 args.DataStream.CopyTo(ss);
                 ss.Position = 0;
 
